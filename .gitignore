@@ -1,0 +1,5 @@
+warehouse.duckdb
+warehouse.duckdb.wal
+target/
+logs/
+.user.yml
