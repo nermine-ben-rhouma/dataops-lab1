@@ -1,0 +1,24 @@
+version: 2
+
+unit_tests:
+  - name: test_unknown_country_is_rejected
+    model: int_orders_checked
+    given:
+      - input: ref('stg_orders')
+        rows:
+          - {order_id: 2001, order_date: '2026-10-01', customer_id: 'C101', country: 'Spain', product: 'Book', quantity: '1', unit_price: '10.00', _row_number: 1, _source_file: 'test.csv', _loaded_at: '2026-10-01 10:00:00'}
+    expect:
+      rows:
+        - {order_id: 2001, reject_reason: 'unknown_country'}
+
+  - name: test_duplicate_order_keeps_the_first
+    model: int_orders_checked
+    given:
+      - input: ref('stg_orders')
+        rows:
+          - {order_id: 2002, order_date: '2026-10-01', customer_id: 'C102', country: 'France', product: 'Book', quantity: '1', unit_price: '10.00', _row_number: 1, _source_file: 'test.csv', _loaded_at: '2026-10-01 10:00:00'}
+          - {order_id: 2002, order_date: '2026-10-02', customer_id: 'C103', country: 'France', product: 'Pen', quantity: '2', unit_price: '5.00', _row_number: 2, _source_file: 'test.csv', _loaded_at: '2026-10-01 10:00:00'}
+    expect:
+      rows:
+        - {order_id: 2002, reject_reason: null}
+        - {order_id: 2002, reject_reason: 'duplicate_order_id'}
