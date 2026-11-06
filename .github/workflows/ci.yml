@@ -1,17 +1,79 @@
+
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11 "
-      -  run: pip install -r requirements.txt
-      - name: Code tests
-        run: python -m pytest
-      - name: Run the pipeline on day 1
-        run: python run_pipeline.py data/raw/orders_day1.csv
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Ruff
+        run: ruff check .
+
+  python-tests:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Pytest
+        run: pytest -q
+
+  data-quality:
+    needs: python-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Test data contract
+        run: datacontract test --server ci contracts/orders.yaml
+
+      - name: Validate CSV with Pandera
+        run: python load_raw.py tests/fixtures/orders_sample.csv
+
+      - name: Build dbt models
+        run: dbt build
+
+      - name: Generate Markdown report
+        run: python report_md.py 8835.40 >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload dbt results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-run-results
+          path: target/run_results.json

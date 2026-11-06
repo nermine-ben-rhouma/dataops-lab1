@@ -1,8 +1,12 @@
+
 import sys
 from pathlib import Path
 
 import duckdb
+import pandas as pd
+import pandera.errors
 
+from pipeline.schema import RAW_ORDERS
 
 DB_PATH = "warehouse.duckdb"
 
@@ -18,6 +22,19 @@ def main():
         print(f"Erreur : fichier introuvable : {csv_path}")
         sys.exit(1)
 
+    # Validate the CSV before modifying the database
+    try:
+        RAW_ORDERS.validate(pd.read_csv(csv_path), lazy=True)
+    except pandera.errors.SchemaErrors as error:
+        print(f"REFUSED: {csv_path} does not match the expected schema")
+        print(
+            error.failure_cases[
+                ["column", "check", "failure_case"]
+            ].to_string(index=False)
+        )
+        sys.exit(1)
+
+    # Load data into DuckDB only if validation succeeds
     con = duckdb.connect(DB_PATH)
 
     try:
