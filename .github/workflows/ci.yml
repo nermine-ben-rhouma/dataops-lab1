@@ -41,7 +41,8 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Pytest
-	run: python -m pytest -q
+        run: python -m pytest -q
+
   data-quality:
     needs: python-tests
     runs-on: ubuntu-latest
